@@ -1,0 +1,27 @@
+import os
+from datetime import timedelta
+
+SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key-change-in-production-2024")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+RESET_TOKEN_EXPIRE_MINUTES = 30
+VERIFICATION_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
+
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./generic_ordering.db")
+
+RATE_LIMIT_REQUESTS = 100
+RATE_LIMIT_WINDOW = 60  # seconds
+
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_REQUIRE_UPPERCASE = True
+PASSWORD_REQUIRE_LOWERCASE = True
+PASSWORD_REQUIRE_DIGIT = True
+PASSWORD_REQUIRE_SPECIAL = True
+
+ITEMS_PER_PAGE = 10
+MAX_ITEMS_PER_PAGE = 100
+
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
