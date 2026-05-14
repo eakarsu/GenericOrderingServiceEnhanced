@@ -1,3 +1,10 @@
+# Apply pass 3 (Group B) note: this root requirements.txt is the one
+# the Dockerfile installs. It already covers the AI router deps
+# (langchain-openai, langchain-core, chromadb, fuzzywuzzy, python-levenshtein).
+# The /api/ai/* endpoints will return 503 if OPENROUTER_API_KEY is unset,
+# and 503 with a "missing dependency: <name>" reason if any of these are
+# not installed. Local devs should install this file (NOT just
+# backend/requirements.txt) for AI features to work.
 python-levenshtein
 fastapi
 uvicorn[standard]
