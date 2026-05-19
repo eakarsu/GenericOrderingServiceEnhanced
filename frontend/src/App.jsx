@@ -10,6 +10,7 @@ import OrdersPage from './pages/OrdersPage';
 import UsersPage from './pages/UsersPage';
 import AllItemsPage from './pages/AllItemsPage';
 import ProfilePage from './pages/ProfilePage';
+import CustomViewsPage from './pages/CustomViewsPage';
 import { api } from './api';
 
 function AppContent() {
@@ -27,6 +28,17 @@ function AppContent() {
     } else {
       setCurrentPage('login');
     }
+    // Route /custom-views (hash or path) to custom-views page
+    function applyRoute() {
+      const path = window.location.pathname || '';
+      const hash = window.location.hash || '';
+      if (path.includes('/custom-views') || hash.includes('custom-views')) {
+        setCurrentPage('custom-views');
+      }
+    }
+    applyRoute();
+    window.addEventListener('hashchange', applyRoute);
+    return () => window.removeEventListener('hashchange', applyRoute);
   }, []);
 
   function navigate(page, arg) {
@@ -83,6 +95,9 @@ function AppContent() {
           <a className={currentPage === 'orders' ? 'active' : ''} onClick={() => navigate('orders')}>
             <span>📦</span> Orders
           </a>
+          <a className={currentPage === 'custom-views' ? 'active' : ''} onClick={() => navigate('custom-views')} data-testid="nav-custom-views">
+            <span>📈</span> Order Views
+          </a>
 
           {isManager && (
             <>
@@ -118,6 +133,7 @@ function AppContent() {
               {currentPage === 'users' && 'User Management'}
               {currentPage === 'all-items' && 'All Items'}
               {currentPage === 'profile' && 'Profile & Settings'}
+              {currentPage === 'custom-views' && 'Order Views'}
             </span>
           </div>
           <div className="topbar-right">
@@ -136,6 +152,7 @@ function AppContent() {
             {currentPage === 'users' && isManager && <UsersPage user={user} />}
             {currentPage === 'all-items' && <AllItemsPage user={user} onNavigate={navigate} />}
             {currentPage === 'profile' && <ProfilePage user={user} onUserUpdate={handleUserUpdate} />}
+            {currentPage === 'custom-views' && <CustomViewsPage user={user} />}
           </ErrorBoundary>
         </div>
       </div>

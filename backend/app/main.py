@@ -43,6 +43,8 @@ app.include_router(export.router)
 app.include_router(ai.router)
 from .routers import analytics_api as _aa, realtime as _rt, payments as _pay, tenant_onboarding as _ton, recommendations as _rec, multi_channel_intake as _mc  # noqa: E402
 app.include_router(_aa.router); app.include_router(_rt.router); app.include_router(_pay.router); app.include_router(_ton.router); app.include_router(_rec.router); app.include_router(_mc.router)
+from .routers import customViews as _cv  # noqa: E402
+app.include_router(_cv.router)
 
 # Seed database on startup
 @app.on_event("startup")
