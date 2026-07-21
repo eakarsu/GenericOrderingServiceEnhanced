@@ -1,13 +1,20 @@
 import os
 from datetime import timedelta
 
-SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key-change-in-production-2024")
+SECRET_KEY = os.getenv("JWT_SECRET", "")
+if len(SECRET_KEY) < 32:
+    raise RuntimeError("JWT_SECRET must contain at least 32 characters")
+GOVERNANCE_TENANT_ID = os.getenv("GOVERNANCE_TENANT_ID", "")
+if not GOVERNANCE_TENANT_ID:
+    raise RuntimeError("GOVERNANCE_TENANT_ID is required")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 RESET_TOKEN_EXPIRE_MINUTES = 30
 VERIFICATION_TOKEN_EXPIRE_MINUTES = 1440  # 24 hours
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./generic_ordering.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is required")
 
 RATE_LIMIT_REQUESTS = 100
 RATE_LIMIT_WINDOW = 60  # seconds

@@ -67,7 +67,10 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
 @router.post("/login", response_model=TokenResponse)
 def login(data: UserLogin, db: Session = Depends(get_db)):
     """Login endpoint."""
-    user = db.query(User).filter(User.username == data.username).first()
+    identity = (data.email or data.username or "").strip().lower()
+    user = db.query(User).filter(
+        (User.username == identity) | (User.email == identity)
+    ).first()
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     if not user.is_active:
@@ -113,7 +116,7 @@ def request_password_reset(data: PasswordResetRequest, db: Session = Depends(get
     db.add(reset_token)
     db.commit()
 
-    return {"message": "If that email exists, a reset link has been sent", "token": token}
+    return {"message": "If that email exists, a reset link has been sent"}
 
 
 @router.post("/password-reset/confirm")

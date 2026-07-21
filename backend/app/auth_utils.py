@@ -5,7 +5,7 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from .config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from .config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, GOVERNANCE_TENANT_ID
 from .database import get_db
 from .models import User
 
@@ -24,13 +24,17 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})
+    subject = str(to_encode.get("sub", ""))
+    to_encode.update({"exp": expire, "tenantId": GOVERNANCE_TENANT_ID,
+                      "subjectIds": to_encode.get("subjectIds", [f"account:{subject}"])})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def decode_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"require_exp": True, "require_sub": True})
+        if not payload.get("tenantId") or not payload.get("role") or not isinstance(payload.get("subjectIds"), list):
+            raise HTTPException(status_code=401, detail="Signed tenant, role, and subject scope required")
         return payload
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")

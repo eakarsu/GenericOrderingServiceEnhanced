@@ -4,15 +4,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 
-from .database import engine, Base, SessionLocal
+from .database import SessionLocal
 from .middleware.error_handler import GlobalErrorHandlerMiddleware
 from .middleware.rate_limiter import RateLimitMiddleware
 from .middleware.security import SecurityHeadersMiddleware, InputSanitizationMiddleware
-from .routers import auth, users, sectors, items, orders, export, ai
-from .seed import seed_database
-
-# Create tables
-Base.metadata.create_all(bind=engine)
+from .routers import auth
+from .routers import governed_orders
 
 app = FastAPI(
     title="Generic Ordering Service Enhanced",
@@ -25,9 +22,10 @@ app.add_middleware(GlobalErrorHandlerMiddleware)
 app.add_middleware(RateLimitMiddleware, requests_limit=200, window=60)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(InputSanitizationMiddleware)
+allowed_origins = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,48 +33,19 @@ app.add_middleware(
 
 # Routers
 app.include_router(auth.router)
-app.include_router(users.router)
-app.include_router(sectors.router)
-app.include_router(items.router)
-app.include_router(orders.router)
-app.include_router(export.router)
-app.include_router(ai.router)
-from .routers import analytics_api as _aa, realtime as _rt, payments as _pay, tenant_onboarding as _ton, recommendations as _rec, multi_channel_intake as _mc  # noqa: E402
-app.include_router(_aa.router); app.include_router(_rt.router); app.include_router(_pay.router); app.include_router(_ton.router); app.include_router(_rec.router); app.include_router(_mc.router)
-from .routers import customViews as _cv  # noqa: E402
-app.include_router(_cv.router)
-
-# Seed database on startup
-@app.on_event("startup")
-def startup_event():
-    db = SessionLocal()
-    try:
-        seed_database(db)
-    finally:
-        db.close()
+app.include_router(governed_orders.router)
+if os.getenv("ENABLE_GENERATED_FEATURES", "false").lower() == "true" and os.getenv("APP_ENV", "development") != "production":
+    from .routers import users, sectors, items, orders, export, ai
+    from .routers import analytics_api as _aa, realtime as _rt, payments as _pay, tenant_onboarding as _ton, recommendations as _rec, multi_channel_intake as _mc
+    app.include_router(users.router); app.include_router(sectors.router); app.include_router(items.router)
+    app.include_router(orders.router); app.include_router(export.router); app.include_router(ai.router)
+    app.include_router(_aa.router); app.include_router(_rt.router); app.include_router(_pay.router)
+    app.include_router(_ton.router); app.include_router(_rec.router); app.include_router(_mc.router)
 
 
 @app.get("/api/health")
 def health_check():
     return {"status": "healthy", "service": "Generic Ordering Service Enhanced"}
-
-
-@app.get("/api/stats")
-def get_stats():
-    """Dashboard statistics."""
-    db = SessionLocal()
-    try:
-        from .models import User, Sector, Item, Order
-        return {
-            "total_users": db.query(User).count(),
-            "total_sectors": db.query(Sector).count(),
-            "total_items": db.query(Item).count(),
-            "total_orders": db.query(Order).count(),
-            "pending_orders": db.query(Order).filter(Order.status == "pending").count(),
-            "completed_orders": db.query(Order).filter(Order.status == "completed").count(),
-        }
-    finally:
-        db.close()
 
 
 # Serve React frontend static files (preferred) — falls back to the

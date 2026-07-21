@@ -1,39 +1,12 @@
-#!/bin/bash
-# Start the Generic Ordering Service Enhanced
-# This starts both the backend API and frontend dev server
-
-echo "========================================="
-echo "  OmniAssist AI - Universal Service Platform"
-echo "========================================="
-
-# Start backend
-echo ""
-echo "Starting backend API on http://localhost:8000..."
-cd "$(dirname "$0")"
-uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload &
-BACKEND_PID=$!
-
-# Wait for backend to be ready
-sleep 2
-
-# Start frontend
-echo "Starting frontend on http://localhost:3000..."
-cd frontend
-npm run dev &
-FRONTEND_PID=$!
-
-echo ""
-echo "========================================="
-echo "  Backend:  http://localhost:8000/api/health"
-echo "  Frontend: http://localhost:3000"
-echo "========================================="
-echo ""
-echo "Login credentials:"
-echo "  Admin:   admin / Admin@123!"
-echo "  Manager: manager1 / Manager@123!"
-echo "  User:    john_doe / User@1234!"
-echo ""
-echo "Press Ctrl+C to stop all services"
-
-trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit" INT TERM
-wait
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";ENV_FILE="$ROOT_DIR/.env";MIGRATION_DIR="$ROOT_DIR/backend/migrations"
+read_env(){ awk -F= -v key="$1" '$0 !~ /^[[:space:]]*#/ && $1==key {value=substr($0,index($0,"=")+1);gsub(/^[[:space:]]+|[[:space:]]+$/,"",value);gsub(/^["\047]|["\047]$/,"",value);print value;exit}' "$ENV_FILE"; }
+load_key(){ local key="$1" parsed;[ -n "${!key-}" ]&&return 0;[ -f "$ENV_FILE" ]||return 0;parsed="$(read_env "$key")";[ -z "$parsed" ]||export "$key=$parsed"; }
+for key in DATABASE_URL JWT_SECRET GOVERNANCE_TENANT_ID ENABLE_GENERATED_FEATURES ALLOW_SCHEMA_MIGRATION BACKEND_PORT FRONTEND_PORT;do load_key "$key";done
+fail(){ printf 'error: %s\n' "$*" >&2;exit 1; }
+port_free(){ if command -v lsof >/dev/null 2>&1&&lsof -tiTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1;then fail "port $1 is already in use; refusing to terminate another process";fi; }
+check(){ local secret="${JWT_SECRET:-}";command -v python3 >/dev/null||fail "python3 is required";[ -n "${DATABASE_URL:-}" ]||fail "DATABASE_URL is required";[ -n "${GOVERNANCE_TENANT_ID:-}" ]||fail "GOVERNANCE_TENANT_ID is required";[ "${#secret}" -ge 32 ]||fail "JWT_SECRET must contain at least 32 characters";[ "${ENABLE_GENERATED_FEATURES:-false}" != true ]||[ "${APP_ENV:-development}" != production ]||fail "generated features are forbidden in production";printf 'configuration valid for tenant %s\n' "$GOVERNANCE_TENANT_ID"; }
+migrate(){ check;[ "${ALLOW_SCHEMA_MIGRATION:-0}" = 1 ]||fail "set ALLOW_SCHEMA_MIGRATION=1";command -v psql >/dev/null||fail "psql is required";for f in "$MIGRATION_DIR"/*.sql;do psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f";done; }
+start(){ local api_port="${BACKEND_PORT:-${PORT:?PORT or BACKEND_PORT is required}}" ui_port="${FRONTEND_PORT:?FRONTEND_PORT is required}";check;[ -d "$ROOT_DIR/frontend/node_modules" ]||fail "frontend dependencies are missing; install explicitly";port_free "$api_port";port_free "$ui_port";export ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-http://${FRONTEND_HOST:-127.0.0.1}:$ui_port}";(cd "$ROOT_DIR"&&python3 -m uvicorn backend.app.main:app --host "${BACKEND_HOST:-127.0.0.1}" --port "$api_port")&api_pid=$!;(cd "$ROOT_DIR/frontend"&&VITE_BACKEND_PORT="$api_port" VITE_FRONT_PORT="$ui_port" npm run dev -- --host "${FRONTEND_HOST:-127.0.0.1}" --port "$ui_port")&ui_pid=$!;trap 'kill "$api_pid" "$ui_pid" 2>/dev/null||true;wait "$api_pid" "$ui_pid" 2>/dev/null||true' INT TERM EXIT;wait "$api_pid" "$ui_pid"; }
+case "${1:-check}" in check)check;;migrate)migrate;;start)start;;*)fail "usage: $0 {check|migrate|start}";;esac

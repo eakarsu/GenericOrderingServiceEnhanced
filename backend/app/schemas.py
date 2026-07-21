@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from typing import Optional, List, Any
 from datetime import datetime
 import re
@@ -54,8 +54,15 @@ class UserRegister(BaseModel):
 
 
 class UserLogin(BaseModel):
-    username: str
+    username: Optional[str] = None
+    email: Optional[str] = None
     password: str
+
+    @model_validator(mode="after")
+    def require_identity(self):
+        if not (self.username or self.email):
+            raise ValueError("Username or email is required")
+        return self
 
 
 class TokenResponse(BaseModel):
