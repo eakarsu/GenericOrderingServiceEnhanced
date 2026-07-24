@@ -53,6 +53,15 @@ export default function Login({ onLogin, onNavigate }) {
             {errors.password && <p className="form-error">{errors.password}</p>}
           </div>
           {errors.general && <p className="form-error" style={{ marginBottom: '1rem' }}>{errors.general}</p>}
+          <button
+            type="button"
+            onClick={() => { setForm((current) => ({ ...current, username: import.meta.env.VITE_DEMO_EMAIL || '', password: import.meta.env.VITE_DEMO_PASSWORD || '' })); }}
+            disabled={!import.meta.env.VITE_DEMO_EMAIL || !import.meta.env.VITE_DEMO_PASSWORD}
+            aria-label="Auto Fill Demo Credentials"
+            style={{ width: '100%', marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', border: '1px solid currentColor', background: 'transparent', cursor: 'pointer' }}
+          >
+            Auto Fill Demo Credentials
+          </button>
           <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '0.75rem' }} disabled={loading}>
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
