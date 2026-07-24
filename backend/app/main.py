@@ -10,6 +10,7 @@ from .middleware.rate_limiter import RateLimitMiddleware
 from .middleware.security import SecurityHeadersMiddleware, InputSanitizationMiddleware
 from .routers import auth
 from .routers import governed_orders
+from .routers import runtime_ai
 
 app = FastAPI(
     title="Generic Ordering Service Enhanced",
@@ -34,6 +35,7 @@ app.add_middleware(
 # Routers
 app.include_router(auth.router)
 app.include_router(governed_orders.router)
+app.include_router(runtime_ai.router)
 if os.getenv("ENABLE_GENERATED_FEATURES", "false").lower() == "true" and os.getenv("APP_ENV", "development") != "production":
     from .routers import users, sectors, items, orders, export, ai
     from .routers import analytics_api as _aa, realtime as _rt, payments as _pay, tenant_onboarding as _ton, recommendations as _rec, multi_channel_intake as _mc
