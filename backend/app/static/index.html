@@ -73,6 +73,11 @@
       cursor: pointer;
     }
     .card button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .presets button { margin-top: 0; background: #334155; color: var(--text); border: 1px solid var(--border); }
+    .result h3 { color: var(--accent); font: 600 14px system-ui; margin: 12px 0 4px; }
+    .result table { width: 100%; border-collapse: collapse; }
+    .result th, .result td { padding: 6px; border-bottom: 1px solid var(--border); text-align: left; }
     .result {
       margin-top: 12px;
       background: #0b1220;
@@ -99,13 +104,14 @@
     <div class="status">AI status: <span id="ai-status" class="badge warn">checking…</span></div>
   </header>
 
-  <main>
+  <nav><a href="/ai-workspace">Authenticated native AI workspace</a></nav><main>
     <section class="card">
       <h2>Single-turn chat</h2>
       <label for="chat-sector">Sector (optional)</label>
-      <select id="chat-sector"><option value="">auto-detect</option></select>
+      <select id="chat-sector"><option value="">auto-detect</option></select><p id="chat-sector-note" role="status"></p>
       <label for="chat-message">Message</label>
       <textarea id="chat-message" placeholder="e.g. I'd like to book a haircut for tomorrow"></textarea>
+      <div class="presets" data-preset-for="chat"></div>
       <button id="chat-send">Send</button>
       <div class="result" id="chat-result">—</div>
     </section>
@@ -114,6 +120,7 @@
       <h2>Detect sector</h2>
       <label for="detect-message">Message</label>
       <textarea id="detect-message" placeholder="e.g. my car won't start"></textarea>
+      <div class="presets" data-preset-for="detect"></div>
       <button id="detect-send">Detect</button>
       <div class="result" id="detect-result">—</div>
     </section>
@@ -121,9 +128,10 @@
     <section class="card">
       <h2>Process order</h2>
       <label for="order-sector">Sector (optional)</label>
-      <select id="order-sector"><option value="">auto-detect</option></select>
+      <select id="order-sector"><option value="">auto-detect</option></select><p id="order-sector-note" role="status"></p>
       <label for="order-query">Query</label>
       <textarea id="order-query" placeholder="e.g. cheese pizza large"></textarea>
+      <div class="presets" data-preset-for="order"></div>
       <button id="order-send">Process</button>
       <div class="result" id="order-result">—</div>
     </section>
@@ -132,6 +140,7 @@
       <h2>Multi-message conversation</h2>
       <label for="conv-messages">One message per line</label>
       <textarea id="conv-messages" placeholder="hello&#10;I'd like to order something&#10;maybe a pizza"></textarea>
+      <div class="presets" data-preset-for="conv"></div>
       <button id="conv-send">Replay</button>
       <div class="result" id="conv-result">—</div>
     </section>
@@ -152,10 +161,81 @@
       return { ok: res.ok, status: res.status, data };
     }
 
+    function report(parent, value) {
+      if (typeof value === "string" && /^[\[{]/.test(value.trim())) {
+        try { value = JSON.parse(value); } catch { /* Keep prose as text. */ }
+      }
+      if (value === null || value === undefined) { parent.append("Not supplied"); return; }
+      if (Array.isArray(value)) {
+        if (!value.length) { parent.append("No items returned"); return; }
+        const rows = value.every(row => row && typeof row === "object" && !Array.isArray(row) && Object.values(row).every(cell => cell === null || typeof cell !== "object"));
+        if (rows) {
+          const keys = [...new Set(value.flatMap(row => Object.keys(row)))];
+          const table = document.createElement("table"), head = table.createTHead().insertRow();
+          keys.forEach(key => { const th = document.createElement("th"); th.textContent = label(key); head.append(th); });
+          const body = table.createTBody();
+          value.forEach(row => { const tr = body.insertRow(); keys.forEach(key => report(tr.insertCell(), row[key])); });
+          parent.append(table);
+        } else {
+          const list = document.createElement("ul");
+          value.forEach(item => { const li = document.createElement("li"); report(li, item); list.append(li); });
+          parent.append(list);
+        }
+        return;
+      }
+      if (typeof value === "object") {
+        Object.entries(value).forEach(([key, item]) => {
+          const section = document.createElement("section"), heading = document.createElement("h3");
+          heading.textContent = label(key); section.append(heading); report(section, item); parent.append(section);
+        });
+        return;
+      }
+      parent.append(value === "" ? "Empty string" : String(value));
+    }
+    const label = key => key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]/g, " ").replace(/^./, first => first.toUpperCase());
     function show(targetId, result) {
-      const el = $(targetId);
-      const prefix = `[${result.status}] `;
-      el.textContent = prefix + (typeof result.data === "string" ? result.data : JSON.stringify(result.data, null, 2));
+      const el = $(targetId); el.replaceChildren();
+      const status = document.createElement("h3"); status.textContent = `Response (${result.status})`; el.append(status);
+      report(el, result.data);
+    }
+
+    const examples = {
+      chat: [
+        ["Hair appointment", "I'd like a haircut tomorrow afternoon. What appointment times are available?", "beauty_salon"],
+        ["Hotel booking", "Do you have a double room available for two nights next week?", "travel_hotel"],
+        ["Dinner delivery", "Can I order two vegetarian pizzas for delivery this evening?", "food_delivery"]
+      ],
+      detect: [
+        ["Vehicle repair", "My car will not start and I need roadside help."],
+        ["Pet care", "I need an appointment for my dog's annual wellness check."],
+        ["Home repair", "My kitchen sink is leaking under the cabinet."]
+      ],
+      order: [
+        ["Pizza order", "One large cheese pizza and two sparkling waters for pickup.", "food_delivery"],
+        ["Laundry pickup", "Please collect two bags of laundry tomorrow morning.", "laundry_services"],
+        ["Hotel room", "Book a double room for two guests for next Friday night.", "travel_hotel"]
+      ],
+      conv: [
+        ["Dinner conversation", "Hello\nI'd like to order a vegetarian pizza\nPlease make it a large for pickup"],
+        ["Hotel conversation", "Hi\nI need a room next weekend\nDo you have a double room for two?"],
+        ["Repair conversation", "Hello\nMy kitchen sink is leaking\nCan a plumber visit tomorrow morning?"]
+      ]
+    };
+    for (const [kind, presets] of Object.entries(examples)) {
+      const holder = document.querySelector(`[data-preset-for="${kind}"]`);
+      presets.forEach(([name, message, sector]) => {
+        const button = document.createElement("button"); button.type = "button"; button.textContent = name;
+        button.addEventListener("click", () => {
+          $(kind === "chat" ? "chat-message" : kind === "detect" ? "detect-message" : kind === "order" ? "order-query" : "conv-messages").value = message;
+          if (kind === "chat" || kind === "order") {
+            const select = $(kind + "-sector");
+            const available = [...select.options].some(option => option.value === sector);
+            select.value = available ? sector : "";
+            $(kind + "-sector-note").textContent = available ? "" : "Sector list unavailable; choose a real sector when loaded, or review auto-detection.";
+          }
+        });
+        holder.append(button);
+      });
     }
 
     async function loadStatus() {

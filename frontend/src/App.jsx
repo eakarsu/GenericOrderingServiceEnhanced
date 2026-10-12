@@ -85,7 +85,7 @@ function AppContent() {
           <p>Universal Service Platform</p>
         </div>
         <nav className="sidebar-nav">
-          <div className="sidebar-section">Main</div>
+          <div className="sidebar-section">Main</div><a href="/ai-workspace">AI workspace</a>
           <a className={currentPage === 'dashboard' ? 'active' : ''} onClick={() => navigate('dashboard')}>
             <span>📊</span> Dashboard
           </a>

@@ -1,3 +1,4 @@
+const nativeProxyCancellation = proxy => { proxy.on('proxyReq',(upstream,req,res)=>{req.once('aborted',()=>upstream.destroy());res.once('close',()=>{if(!res.writableEnded)upstream.destroy();});}); };
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -22,7 +23,9 @@ export default defineConfig({
     host: process.env.FRONTEND_HOST || '127.0.0.1',
     port: frontendPort,
     proxy: {
+      '/ai-workspace': { configure:nativeProxyCancellation, target: `http://127.0.0.1:${backendPort}`, changeOrigin: true },
       '/api': {
+        configure:nativeProxyCancellation,
         target: `http://127.0.0.1:${backendPort}`,
         changeOrigin: true
       }

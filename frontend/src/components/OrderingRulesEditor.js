@@ -32,7 +32,7 @@ export default function OrderingRulesEditor({ user }) {
       const r = await fetch('/api/custom-views/ordering-rules', { headers: auth() });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d = await r.json();
-      setRules(d.rules || []);
+      setRules(Array.isArray(d.rules) ? d.rules : []);
     } catch (e) { setErr(e.message); }
     finally { setLoading(false); }
   }

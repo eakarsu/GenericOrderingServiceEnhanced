@@ -1,10 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 
-from .database import SessionLocal
+from sqlalchemy.orm import Session
+from .database import SessionLocal, get_db
 from .middleware.error_handler import GlobalErrorHandlerMiddleware
 from .middleware.rate_limiter import RateLimitMiddleware
 from .middleware.security import SecurityHeadersMiddleware, InputSanitizationMiddleware
@@ -37,18 +38,36 @@ app.include_router(auth.router)
 app.include_router(governed_orders.router)
 app.include_router(runtime_ai.router)
 if os.getenv("ENABLE_GENERATED_FEATURES", "false").lower() == "true" and os.getenv("APP_ENV", "development") != "production":
-    from .routers import users, sectors, items, orders, export, ai
+    from .routers import users, sectors, items, orders, export, ai, customViews
     from .routers import analytics_api as _aa, realtime as _rt, payments as _pay, tenant_onboarding as _ton, recommendations as _rec, multi_channel_intake as _mc
     app.include_router(users.router); app.include_router(sectors.router); app.include_router(items.router)
+    app.include_router(customViews.router)
     app.include_router(orders.router); app.include_router(export.router); app.include_router(ai.router)
     app.include_router(_aa.router); app.include_router(_rt.router); app.include_router(_pay.router)
     app.include_router(_ton.router); app.include_router(_rec.router); app.include_router(_mc.router)
+
+    @app.get("/api/stats")
+    def dashboard_stats(db: Session = Depends(get_db)):
+        from .models import Sector, Item, Order, User
+        return {
+            "total_sectors": db.query(Sector).count(),
+            "total_items": db.query(Item).count(),
+            "total_orders": db.query(Order).count(),
+            "pending_orders": db.query(Order).filter(Order.status == "pending").count(),
+            "total_users": db.query(User).count(),
+        }
 
 
 @app.get("/api/health")
 def health_check():
     return {"status": "healthy", "service": "Generic Ordering Service Enhanced"}
 
+
+@app.get("/ai-workspace")
+def native_ai_workspace():
+    from fastapi.responses import HTMLResponse
+    from pathlib import Path
+    return HTMLResponse((Path(__file__).parent / "static/ai-workspace.html").read_text())
 
 # Serve React frontend static files (preferred) — falls back to the
 # bundled minimal HTML/JS dev console under backend/app/static/ if the

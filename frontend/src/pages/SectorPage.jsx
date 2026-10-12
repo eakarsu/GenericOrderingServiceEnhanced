@@ -13,7 +13,7 @@ export default function SectorPage({ sectorId, onNavigate, user }) {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [perPage] = useState(10);
+  const [perPage] = useState(20);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
@@ -46,9 +46,9 @@ export default function SectorPage({ sectorId, onNavigate, user }) {
       if (filterCategory) params.category_id = filterCategory;
       if (filterAvailable !== '') params.is_available = filterAvailable;
       const data = await api.getItems(params);
-      setItems(data.items);
-      setTotal(data.total);
-      setTotalPages(data.total_pages);
+      setItems(Array.isArray(data.items) ? data.items : Array.isArray(data.data) ? data.data : []);
+      setTotal(Number(data.total ?? data.pagination?.total ?? 0));
+      setTotalPages(Number(data.total_pages ?? data.pagination?.total_pages ?? 1));
     } catch (err) {
       addToast('Failed to load items', 'error');
     } finally {

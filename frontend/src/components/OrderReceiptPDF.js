@@ -16,7 +16,7 @@ export default function OrderReceiptPDF() {
       .then((data) => {
         const items = data.items || data.orders || data || [];
         setOrders(Array.isArray(items) ? items : []);
-        if (items.length) setSelected(String(items[0].id));
+        if (Array.isArray(items) && items.length) setSelected(String(items[0].id));
         setLoading(false);
       })
       .catch((e) => {

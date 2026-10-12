@@ -22,12 +22,17 @@ export default function Dashboard({ onNavigate, user }) {
 
   async function loadData() {
     try {
-      const [sectorsData, statsData] = await Promise.all([
+      const [sectorsResult, statsResult] = await Promise.allSettled([
         api.getSectors({ per_page: 50 }),
         api.getStats()
       ]);
-      setSectors(sectorsData.items);
-      setStats(statsData);
+      if (sectorsResult.status === 'fulfilled') {
+        const sectorsData = sectorsResult.value;
+        setSectors(Array.isArray(sectorsData.items) ? sectorsData.items : Array.isArray(sectorsData.data) ? sectorsData.data : []);
+      } else {
+        throw sectorsResult.reason;
+      }
+      if (statsResult.status === 'fulfilled') setStats(statsResult.value);
     } catch (err) {
       console.error(err);
     } finally {
@@ -37,7 +42,7 @@ export default function Dashboard({ onNavigate, user }) {
 
   const filteredSectors = sectors.filter(s =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.description.toLowerCase().includes(search.toLowerCase())
+    (s.description || '').toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading) {

@@ -9,10 +9,11 @@ export default function OrderConfirmationPDF() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    fetch('/api/orders/?limit=50', { headers: { Authorization: `Bearer ${token}` } })
+    fetch('/api/orders/?per_page=50', { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.ok ? r.json() : { orders: [] })
       .then((d) => {
-        const list = Array.isArray(d) ? d : (d.orders || d.items || []);
+        const candidate = Array.isArray(d) ? d : (d.items ?? d.data ?? d.orders);
+        const list = Array.isArray(candidate) ? candidate : [];
         setOrders(list);
         if (list.length > 0) setOrderId(String(list[0].id));
       })

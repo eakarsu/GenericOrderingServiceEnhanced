@@ -7,6 +7,8 @@ export default function Login({ onLogin, onNavigate }) {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const { addToast } = useToast();
+  const demoAvailable = import.meta.env.VITE_ENABLE_DEMO_CREDENTIAL_AUTOFILL === 'true'
+    && Boolean(import.meta.env.VITE_DEMO_EMAIL && import.meta.env.VITE_DEMO_PASSWORD);
 
   function validate() {
     const e = {};
@@ -55,13 +57,14 @@ export default function Login({ onLogin, onNavigate }) {
           {errors.general && <p className="form-error" style={{ marginBottom: '1rem' }}>{errors.general}</p>}
           <button
             type="button"
-            onClick={() => { setForm((current) => ({ ...current, username: import.meta.env.VITE_DEMO_EMAIL || '', password: import.meta.env.VITE_DEMO_PASSWORD || '' })); }}
-            disabled={!import.meta.env.VITE_DEMO_EMAIL || !import.meta.env.VITE_DEMO_PASSWORD}
-            aria-label="Auto Fill Demo Credentials"
+            onClick={() => { if (demoAvailable) { setForm({ username: import.meta.env.VITE_DEMO_EMAIL, password: import.meta.env.VITE_DEMO_PASSWORD }); setErrors({}); } }}
+            disabled={!demoAvailable}
+            aria-label="Fill demo credentials"
             style={{ width: '100%', marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', border: '1px solid currentColor', background: 'transparent', cursor: 'pointer' }}
           >
-            Auto Fill Demo Credentials
+            Fill demo credentials
           </button>
+          {!demoAvailable && <p className="form-help">Demo credentials are not configured for this build.</p>}
           <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '0.75rem' }} disabled={loading}>
             {loading ? 'Signing in...' : 'Sign In'}
           </button>

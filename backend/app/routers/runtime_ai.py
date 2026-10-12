@@ -12,6 +12,18 @@ from ..models import User
 router = APIRouter(prefix="/api/runtime-ai", tags=["Runtime AI"])
 
 
+@router.get("/history")
+def ordering_advice_history(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    rows = db.execute(text(
+        """SELECT id, input, result, model, created_at
+           FROM ordering_runtime_ai_results WHERE user_id = :user_id
+           ORDER BY created_at DESC, id DESC LIMIT 100"""
+    ), {"user_id": current_user.id}).mappings().all()
+    return [{"id": str(row["id"]), "input": row["input"], "output": row["result"],
+             "model": row["model"], "created_at": row["created_at"].isoformat()}
+            for row in rows]
+
+
 @router.post("/ordering-advice")
 def ordering_advice(payload: dict, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not payload:

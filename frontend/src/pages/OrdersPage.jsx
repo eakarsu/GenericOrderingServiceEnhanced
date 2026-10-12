@@ -12,7 +12,7 @@ export default function OrdersPage({ user }) {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [perPage] = useState(10);
+  const [perPage] = useState(20);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -34,9 +34,9 @@ export default function OrdersPage({ user }) {
       if (search) params.search = search;
       if (filterStatus) params.status = filterStatus;
       const data = await api.getOrders(params);
-      setOrders(data.items);
-      setTotal(data.total);
-      setTotalPages(data.total_pages);
+      setOrders(Array.isArray(data.items) ? data.items : Array.isArray(data.data) ? data.data : []);
+      setTotal(Number(data.total ?? data.pagination?.total ?? 0));
+      setTotalPages(Number(data.total_pages ?? data.pagination?.total_pages ?? 1));
     } catch (err) {
       addToast('Failed to load orders', 'error');
     } finally {
